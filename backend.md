@@ -27,4 +27,7 @@ This file is an overview of what the backend needs to do.
     - should sync the match number, and match time
 
 ## Watch List
-- should sync what teams that are on the watch list 
+- should sync what teams that are on the watch list, as well as the note that goes with the team
+
+## team directory
+- should sync all the teams that are listed and any scout reports connected to the team. 
