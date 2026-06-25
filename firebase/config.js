@@ -20,12 +20,13 @@
 */
 
 const FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyB6cpLcjvQwDolqaXLkBYkJI2kVNeIvNmU",
+  authDomain: "firstpick-afc34.firebaseapp.com",
+  projectId: "firstpick-afc34",
+  storageBucket: "firstpick-afc34.firebasestorage.app",
+  messagingSenderId: "833592591457",
+  appId: "1:833592591457:web:723770369abfbaf4179620",
+  measurementId: "G-LDS7BTDG9S"
 };
 
 firebase.initializeApp(FIREBASE_CONFIG);
