@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0F1115">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="FTC Companion">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>FTC Companion</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="assets/icon.svg">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <button class="icon-button quiet" id="syncButton" type="button" aria-label="Open sharing panel" title="Sharing">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 7h10v10H7z"/><path d="M3 3h6v2H5v4H3zM15 3h6v6h-2V5h-4zM3 15h2v4h4v2H3zM19 15h2v6h-6v-2h4z"/></svg>
+        </button>
+        <div class="event-meta">
+          <span class="eyebrow">Event Command</span>
+          <strong id="eventName">FTC Meet Scout</strong>
+        </div>
+        <button class="icon-button quiet" id="settingsButton" type="button" aria-label="Open settings" title="Settings">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"/><path d="m19.4 13.5 1.6 1.2-2 3.5-1.9-.8c-.5.4-1 .7-1.6.9l-.2 2.1h-4l-.3-2.1c-.6-.2-1.1-.5-1.6-.9l-1.9.8-2-3.5 1.7-1.2a7 7 0 0 1 0-1.9l-1.7-1.2 2-3.5 1.9.8c.5-.4 1-.7 1.6-.9l.3-2.1h4l.2 2.1c.6.2 1.1.5 1.6.9l1.9-.8 2 3.5-1.6 1.2c.1.6.1 1.3 0 1.9Z"/></svg>
+        </button>
+      </header>
+
+      <main>
+        <section class="view active" data-view="home" aria-label="Home">
+          <div class="hero-panel">
+            <div>
+              <span class="eyebrow">Upcoming Match</span>
+              <h1 id="upcomingTitle">Match 12</h1>
+              <p id="upcomingSubtitle">Red 11234, 8642 vs Blue 14590, 3102</p>
+            </div>
+            <button class="countdown-pill" id="upcomingButton" type="button">
+              <span id="countdown">08:00</span>
+              <small>Tap for lineup</small>
+            </button>
+          </div>
+
+          <div class="quick-grid">
+            <button class="action-tile primary" id="scoutNextButton" type="button">
+              <span class="tile-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 4 4 14v6h6L20 10z"/><path d="m13 5 6 6"/></svg></span>
+              <span>
+                <strong>Scout next</strong>
+                <small id="scoutNextText">Team 11234, because they appear soon</small>
+              </span>
+            </button>
+            <button class="action-tile" id="notifyButton" type="button">
+              <span class="tile-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 20h4"/></svg></span>
+              <span>
+                <strong>Match alerts</strong>
+                <small id="notificationState">Enable notifications</small>
+              </span>
+            </button>
+          </div>
+
+          <section class="section-block">
+            <div class="section-title">
+              <h2>Next Matches</h2>
+              <button class="text-button" data-go="schedule" type="button">Edit</button>
+            </div>
+            <div id="nextMatches" class="match-list"></div>
+          </section>
+
+          <section class="section-block">
+            <div class="section-title">
+              <h2>Team Reminders</h2>
+              <button class="icon-button mini" id="addReminderButton" type="button" aria-label="Add reminder" title="Add reminder">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </div>
+            <div id="reminderList" class="reminder-list"></div>
+          </section>
+        </section>
+
+        <section class="view" data-view="schedule" aria-label="Schedule">
+          <div class="screen-heading">
+            <span class="eyebrow">Manual Schedule</span>
+            <h1>Matches</h1>
+          </div>
+          <div id="scheduleList" class="match-list expanded"></div>
+          <button class="floating-action" id="editScheduleButton" type="button">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            Input schedule
+          </button>
+        </section>
+
+        <section class="view" data-view="scout" aria-label="Begin scout">
+          <div class="screen-heading">
+            <span class="eyebrow">Begin Scout</span>
+            <h1>Robot report</h1>
+          </div>
+          <form id="scoutForm" class="form-panel">
+            <label class="field-label" for="teamNumberInput">Team number</label>
+            <input id="teamNumberInput" name="teamNumber" inputmode="numeric" autocomplete="off" placeholder="11234" required>
+
+            <fieldset>
+              <legend>Drivetrain</legend>
+              <div class="segmented" data-segment="drivetrain">
+                <button type="button" data-value="tank">Tank</button>
+                <button type="button" data-value="mecanum">Mecanum</button>
+                <button type="button" data-value="omni">Omni</button>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Autonomous</legend>
+              <div class="segmented" data-segment="auto">
+                <button type="button" data-value="reliable">Reliable</button>
+                <button type="button" data-value="inconsistent">Inconsistent</button>
+                <button type="button" data-value="none">None</button>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Endgame</legend>
+              <div class="segmented" data-segment="endgame">
+                <button type="button" data-value="full">Full</button>
+                <button type="button" data-value="partial">Partial</button>
+                <button type="button" data-value="none">None</button>
+              </div>
+            </fieldset>
+
+            <label class="range-row" for="reliabilityInput">
+              <span>Reliability</span>
+              <strong id="reliabilityValue">7/10</strong>
+            </label>
+            <input id="reliabilityInput" name="reliability" type="range" min="1" max="10" value="7">
+
+            <label class="field-label" for="notesInput">Notes</label>
+            <textarea id="notesInput" name="notes" rows="5" placeholder="Fast cycle, careful driver, intake needs watching..."></textarea>
+
+            <button class="submit-button" type="submit">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M7 21v-8h10v8M7 3v5h8"/></svg>
+              Save report
+            </button>
+          </form>
+        </section>
+
+        <section class="view" data-view="watchlist" aria-label="Watchlist">
+          <div class="screen-heading inline">
+            <div>
+              <span class="eyebrow">Watchlist</span>
+              <h1>Priority teams</h1>
+            </div>
+            <button class="icon-button" id="addWatchButton" type="button" aria-label="Add watchlist team" title="Add team">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+          <div id="watchList" class="team-list"></div>
+        </section>
+
+        <section class="view" data-view="teams" aria-label="Teams">
+          <div class="screen-heading">
+            <span class="eyebrow">Competition Teams</span>
+            <h1>Team directory</h1>
+          </div>
+          <label class="search-box" for="teamSearch">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.3-4.3"/><circle cx="11" cy="11" r="7"/></svg>
+            <input id="teamSearch" placeholder="Search teams" autocomplete="off">
+          </label>
+          <div id="teamList" class="team-list"></div>
+          <button class="floating-action" id="editTeamsButton" type="button">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            Update teams
+          </button>
+        </section>
+      </main>
+
+      <nav class="dock" aria-label="Primary">
+        <span class="dock-blob" aria-hidden="true"></span>
+        <button class="dock-item active" data-nav="home" type="button" aria-label="Home" title="Home">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7v9H5v-9Z"/><path d="M9 20v-6h6v6"/></svg>
+        </button>
+        <button class="dock-item" data-nav="schedule" type="button" aria-label="Schedule" title="Schedule">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 3v4M17 3v4M4 9h16M5 5h14v16H5z"/></svg>
+        </button>
+        <button class="dock-item start-scout" data-nav="scout" type="button" aria-label="Begin scout" title="Scout">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 4 4 14v6h6L20 10z"/><path d="m13 5 6 6"/></svg>
+        </button>
+        <button class="dock-item" data-nav="watchlist" type="button" aria-label="Watchlist" title="Watchlist">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.7A4 4 0 0 1 19 11c0 5.6-7 10-7 10Z"/></svg>
+        </button>
+        <button class="dock-item" data-nav="teams" type="button" aria-label="Teams" title="Teams">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-8 0"/><path d="M3 21a7 7 0 0 1 14 0"/><path d="M17 8a3 3 0 0 1 0 6"/><path d="M21 21a5 5 0 0 0-4-4.9"/></svg>
+        </button>
+      </nav>
+    </div>
+
+    <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+    <section class="sheet" id="detailSheet" aria-live="polite" aria-label="Details" hidden></section>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "FTC Companion App v3",
+  "short_name": "FTC Scout",
+  "description": "Mobile-first FTC scouting, schedule, watchlist, and team reminder PWA.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0F1115",
+  "theme_color": "#0F1115",
+  "categories": ["productivity", "sports", "education"],
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

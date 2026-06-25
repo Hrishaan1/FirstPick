@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="FTC Companion icon">
+  <rect width="512" height="512" rx="112" fill="#0F1115"/>
+  <path d="M92 174c0-42 34-76 76-76h176c42 0 76 34 76 76v164c0 42-34 76-76 76H168c-42 0-76-34-76-76V174Z" fill="#181B22" stroke="#2D3440" stroke-width="16"/>
+  <path d="M132 224h248" stroke="#FF8A00" stroke-width="26" stroke-linecap="round"/>
+  <path d="M178 286h156" stroke="#F8FAFC" stroke-width="22" stroke-linecap="round"/>
+  <circle cx="178" cy="356" r="28" fill="#EF4444"/>
+  <circle cx="256" cy="356" r="28" fill="#FF8A00"/>
+  <circle cx="334" cy="356" r="28" fill="#3B82F6"/>
+  <path d="M168 98h176v68H168z" fill="#22262F"/>
+  <path d="M206 98V64h100v34" stroke="#FF8A00" stroke-width="18" stroke-linecap="round"/>
+</svg>
