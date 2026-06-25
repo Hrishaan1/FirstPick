@@ -1,6 +1,6 @@
 {
-  "name": "FTC Companion App v3",
-  "short_name": "FTC Scout",
+  "name": "FirstPick",
+  "short_name": "FirstPick",
   "description": "Mobile-first FTC scouting, schedule, watchlist, and team reminder PWA.",
   "start_url": ".",
   "scope": ".",

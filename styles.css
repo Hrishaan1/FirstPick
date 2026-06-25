@@ -696,6 +696,58 @@ input[type="range"] {
   color: var(--danger);
 }
 
+.onboarding-hero {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.onboarding-hero h2 {
+  margin: 0.15rem 0 0;
+}
+
+.app-mark {
+  width: 3.6rem;
+  height: 3.6rem;
+  display: grid;
+  place-items: center;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, var(--primary-hover), var(--primary));
+  color: #0F1115;
+  font-weight: 1000;
+  box-shadow: 0 1rem 2rem color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+.install-steps {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.install-steps article {
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: var(--card);
+}
+
+.install-steps strong,
+.install-steps span {
+  display: block;
+}
+
+.install-steps strong {
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.install-steps span {
+  margin-top: 0.25rem;
+  color: var(--muted);
+  line-height: 1.42;
+}
+
 .editor-card {
   display: grid;
   gap: 0.65rem;

@@ -1,6 +1,6 @@
 # FirstPick
 
-FirstPick (FTC Companion App v3) is a mobile-first PWA for FTC teams to manage scouting, match schedules, watchlists, team notes, and match reminders during competitions. The app is built to feel like a native phone app first, while still remaining usable on desktop.
+FirstPick is a mobile-first PWA for FTC teams to manage scouting, match schedules, watchlists, team notes, and match reminders during competitions. The app is built to feel like a native phone app first, while still remaining usable on desktop.
 
 The current version is a static frontend prototype with local browser storage. It is ready for Firebase-backed sync in the next backend phase.
 
@@ -14,6 +14,7 @@ The current version is a static frontend prototype with local browser storage. I
 - Team directory with searchable team list and saved scout reports
 - Watchlist for priority teams and notes
 - Mock team-linking panel with a share code/QR-style visual
+- First-run onboarding that tells users how to add FirstPick to their home screen
 - Dark and light theme support from the requested color palette
 - Service worker for offline app-shell caching
 - Browser notification hooks for match alerts

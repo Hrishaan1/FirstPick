@@ -1,8 +1,8 @@
 {
-  "name": "ftc-companion-app-v3",
+  "name": "firstpick",
   "version": "0.1.0",
   "private": true,
-  "description": "Mobile-first PWA companion app for FTC scouting, scheduling, and team coordination.",
+  "description": "FirstPick is a mobile-first PWA for FTC scouting, scheduling, and team coordination.",
   "scripts": {
     "dev": "python3 -m http.server 4173",
     "start": "python3 -m http.server 4173"

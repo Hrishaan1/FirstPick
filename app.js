@@ -1,8 +1,9 @@
 const STORE_KEY = "ftc-companion-v3";
+const ONBOARDING_KEY = "firstpick-onboarding-complete";
 const navOrder = ["home", "schedule", "scout", "watchlist", "teams"];
 
 const seedData = {
-  eventName: "FTC Meet Scout",
+  eventName: "Competition Scout",
   theme: "dark",
   syncCode: "FTC-28874-7KQ",
   teams: [
@@ -68,6 +69,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setInterval(updateCountdown, 1000);
   setInterval(checkMatchNotifications, 30000);
   await tryFirebaseReconnect();
+  maybeOpenOnboarding();
 });
 
 function minutesFromNow(minutes) {
@@ -78,7 +80,9 @@ function minutesFromNow(minutes) {
 function loadState() {
   try {
     const stored = JSON.parse(localStorage.getItem(STORE_KEY));
-    return stored ? { ...seedData, ...stored } : seedData;
+    const nextState = stored ? { ...seedData, ...stored } : seedData;
+    if (nextState.eventName === "FTC Meet Scout") nextState.eventName = "Competition Scout";
+    return nextState;
   } catch {
     return seedData;
   }
@@ -496,12 +500,56 @@ function openSettings() {
     });
   });
   $("#saveSettings").addEventListener("click", () => {
-    state.eventName = $("#eventNameInput").value.trim() || "FTC Meet Scout";
+    state.eventName = $("#eventNameInput").value.trim() || "Competition Scout";
     $("#eventName").textContent = state.eventName;
     saveState();
     closeSheet();
     showToast("Settings saved");
   });
+}
+
+function maybeOpenOnboarding() {
+  if (localStorage.getItem(ONBOARDING_KEY)) return;
+  window.setTimeout(openOnboarding, 450);
+}
+
+function openOnboarding() {
+  openSheet(`
+    <div class="onboarding-hero">
+      <span class="app-mark" aria-hidden="true">FP</span>
+      <div>
+        <span class="eyebrow">Welcome to FirstPick</span>
+        <h2>Install it like a real app</h2>
+      </div>
+    </div>
+    <p class="field-label">FirstPick works best from your home screen during competitions, with quick access to scouting, schedules, and reminders.</p>
+    <div class="install-steps">
+      <article>
+        <strong>iPhone Safari</strong>
+        <span>Tap Share, then Add to Home Screen.</span>
+      </article>
+      <article>
+        <strong>Chrome or Android</strong>
+        <span>Open the browser menu, then choose Install app or Add to Home screen.</span>
+      </article>
+      <article>
+        <strong>After installing</strong>
+        <span>Open FirstPick from your home screen before matches start.</span>
+      </article>
+    </div>
+    <div class="sheet-actions">
+      <button class="secondary-button" type="button" id="remindInstallLater">Later</button>
+      <button class="submit-button" type="button" id="finishOnboarding">Got it</button>
+    </div>
+  `);
+  $("#finishOnboarding").addEventListener("click", completeOnboarding);
+  $("#remindInstallLater").addEventListener("click", closeSheet);
+}
+
+function completeOnboarding() {
+  localStorage.setItem(ONBOARDING_KEY, "1");
+  closeSheet();
+  showToast("FirstPick is ready");
 }
 
 function openSync() {
