@@ -1,4 +1,4 @@
-const CACHE_NAME = "ftc-companion-v3-cache-1";
+const CACHE_NAME = "firstpick-cache-2";
 const APP_SHELL = [
   "./",
   "./index.html",
