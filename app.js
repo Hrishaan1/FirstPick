@@ -46,6 +46,8 @@ let selectedSegments = {
   endgame: "partial"
 };
 let toastTimer;
+let isRemoteUpdate = false;
+let syncConnected = false;
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -54,7 +56,7 @@ function uid() {
   return globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   document.documentElement.dataset.theme = state.theme;
   $("#eventName").textContent = state.eventName;
   registerServiceWorker();
@@ -65,6 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateCountdown();
   setInterval(updateCountdown, 1000);
   setInterval(checkMatchNotifications, 30000);
+  await tryFirebaseReconnect();
 });
 
 function minutesFromNow(minutes) {
@@ -83,6 +86,17 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  if (syncConnected && !isRemoteUpdate) {
+    fbSync.save({
+      eventName: state.eventName,
+      teams: state.teams,
+      schedule: state.schedule,
+      reports: state.reports,
+      watchlist: state.watchlist,
+      reminders: state.reminders
+    });
+  }
+  updateSyncIndicator();
 }
 
 function registerServiceWorker() {
@@ -491,21 +505,55 @@ function openSettings() {
 }
 
 function openSync() {
+  if (syncConnected) {
+    openSheet(`
+      <h2>Sync connected</h2>
+      <p class="field-label">Devices with this code share all scouting data in real time.</p>
+      <div class="qr-panel">${fbSync.getCode()}</div>
+      <div class="sheet-grid">
+        <p style="text-align:center;color:var(--success);font-weight:800;">Live</p>
+      </div>
+      <div class="sheet-actions">
+        <button class="secondary-button" type="button" data-close>Close</button>
+        <button class="danger-button" type="button" id="disconnectSync">Disconnect</button>
+      </div>
+    `);
+    $("#disconnectSync").addEventListener("click", () => {
+      fbSync.disconnect();
+      syncConnected = false;
+      showToast("Sync disconnected");
+      closeSheet();
+      updateSyncIndicator();
+    });
+    return;
+  }
+
   openSheet(`
-    <h2>Share scouting data</h2>
-    <p class="field-label">Scan this team code on another phone to link apps. Firebase sync can replace this local mock channel later.</p>
-    <div class="qr-panel">${state.syncCode}</div>
+    <h2>Sync with Firebase</h2>
+    <p class="field-label">Create a new sync session or join an existing one to share data across devices in real time.</p>
+    <div class="sheet-actions" style="grid-template-columns:1fr;">
+      <button class="submit-button" type="button" id="createSession">Create new session</button>
+    </div>
     <div class="sheet-grid">
-      <input id="joinCodeInput" placeholder="Enter another team's code" autocomplete="off">
+      <input id="joinCodeInput" placeholder="Enter session code (e.g. FTC-12345-ABC)" autocomplete="off">
     </div>
     <div class="sheet-actions">
-      <button class="secondary-button" type="button" data-close>Close</button>
-      <button class="submit-button" type="button" id="joinCodeButton">Link app</button>
+      <button class="secondary-button" type="button" data-close>Cancel</button>
+      <button class="submit-button" type="button" id="joinSession">Join session</button>
     </div>
   `);
-  $("#joinCodeButton").addEventListener("click", () => {
-    const code = $("#joinCodeInput").value.trim();
-    showToast(code ? `Linked to ${code}` : "Enter a sync code first");
+  $("#createSession").addEventListener("click", createSyncSession);
+  $("#joinSession").addEventListener("click", () => {
+    const code = $("#joinCodeInput").value.trim().toUpperCase();
+    if (code) joinSyncSession(code);
+    else showToast("Enter a session code first");
+  });
+  $("#joinCodeInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const code = e.target.value.trim().toUpperCase();
+      if (code) joinSyncSession(code);
+    }
   });
 }
 
@@ -661,6 +709,83 @@ function openReminderEditor() {
     renderReminders();
     closeSheet();
   });
+}
+
+function updateSyncIndicator() {
+  const btn = $("#syncButton");
+  if (!btn) return;
+  btn.style.color = syncConnected ? "var(--success)" : "";
+  btn.title = syncConnected ? `Synced: ${fbSync.getCode()}` : "Sync (not connected)";
+}
+
+async function tryFirebaseReconnect() {
+  try {
+    const data = await fbSync.tryReconnect();
+    if (data) {
+      Object.assign(state, data);
+      syncConnected = true;
+      fbSync.onRemoteChange = handleRemoteUpdate;
+      saveState();
+      renderAll();
+      showToast("Sync reconnected");
+    }
+  } catch {
+    syncConnected = false;
+  }
+  updateSyncIndicator();
+}
+
+async function createSyncSession() {
+  try {
+    const code = await fbSync.create({
+      eventName: state.eventName,
+      teams: state.teams,
+      schedule: state.schedule,
+      reports: state.reports,
+      watchlist: state.watchlist,
+      reminders: state.reminders
+    });
+    syncConnected = true;
+    fbSync.onRemoteChange = handleRemoteUpdate;
+    closeSheet();
+    showToast(`Session created: ${code}`);
+    updateSyncIndicator();
+  } catch (err) {
+    showToast("Failed to create session: " + err.message);
+  }
+}
+
+async function joinSyncSession(code) {
+  try {
+    const data = await fbSync.join(code);
+    if (!data) {
+      showToast("Session not found");
+      return;
+    }
+    Object.assign(state, data);
+    syncConnected = true;
+    fbSync.onRemoteChange = handleRemoteUpdate;
+    saveState();
+    renderAll();
+    closeSheet();
+    showToast(`Joined session: ${code}`);
+    updateSyncIndicator();
+  } catch (err) {
+    showToast("Failed to join: " + err.message);
+  }
+}
+
+function handleRemoteUpdate(data) {
+  if (!data) return;
+  isRemoteUpdate = true;
+  const prevEventName = state.eventName;
+  Object.assign(state, data);
+  if (state.eventName !== prevEventName) {
+    $("#eventName").textContent = state.eventName;
+  }
+  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  renderAll();
+  isRemoteUpdate = false;
 }
 
 function openSheet(html) {
