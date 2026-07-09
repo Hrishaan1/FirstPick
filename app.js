@@ -487,6 +487,7 @@ function openSettings() {
         </div>
       </fieldset>
     </div>
+    <button class="danger-button" type="button" id="clearAllData" style="width:100%;margin-top:0.25rem;">Clear all data</button>
     <div class="sheet-actions">
       <button class="secondary-button" type="button" data-close>Cancel</button>
       <button class="submit-button" type="button" id="saveSettings">Save</button>
@@ -505,6 +506,34 @@ function openSettings() {
     saveState();
     closeSheet();
     showToast("Settings saved");
+  });
+  $("#clearAllData").addEventListener("click", () => {
+    closeSheet();
+    openClearDataConfirm();
+  });
+}
+
+function openClearDataConfirm() {
+  openSheet(`
+    <h2>Clear all data?</h2>
+    <div class="sheet-grid">
+      <p style="text-align:center;color:var(--muted);">This will delete all teams, matches, reports, watchlist items, and reminders. This data will also be deleted from all connected apps.</p>
+    </div>
+    <div class="sheet-actions">
+      <button class="secondary-button" type="button" data-close>Cancel</button>
+      <button class="danger-button" type="button" id="confirmClearData">Delete everything</button>
+    </div>
+  `);
+  $("#confirmClearData").addEventListener("click", () => {
+    state.teams = [];
+    state.schedule = [];
+    state.reports = [];
+    state.watchlist = [];
+    state.reminders = [];
+    saveState();
+    renderAll();
+    closeSheet();
+    showToast("All data cleared");
   });
 }
 

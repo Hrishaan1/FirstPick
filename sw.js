@@ -1,4 +1,4 @@
-const CACHE_NAME = "firstpick-cache-2";
+const CACHE_NAME = "firstpick-cache-3";
 const APP_SHELL = [
   "./",
   "./index.html",
