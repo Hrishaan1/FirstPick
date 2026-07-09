@@ -1,54 +1,68 @@
 # FirstPick
 
-FirstPick is a mobile-first PWA for FTC teams to manage scouting, match schedules, watchlists, team notes, and match reminders during competitions. The app is built to feel like a native phone app first, while still remaining usable on desktop.
+FirstPick is a mobile-first PWA for FTC teams to manage scouting, match schedules, watchlists, team notes, and match reminders during competitions. It is built to feel like a native phone app on mobile, with a compact bottom dock and fast access to the scout form, while still remaining usable on desktop.
 
-The current version is a static frontend prototype with local browser storage. It is ready for Firebase-backed sync in the next backend phase.
+The app currently runs as a static frontend and stores data locally by default. It also includes optional Firebase Firestore session sync so multiple devices can share the same event data in real time by creating or joining a session code.
 
 ## Features
 
 - Mobile-first PWA layout with an iPhone-style bottom dock
-- Home screen with upcoming match, countdown, next matches, scout-next suggestion, and team reminders
+- Home screen with upcoming match, live countdown, next matches, scout-next suggestion, and team reminders
 - Manual schedule editor with one card per match
 - Scout report form for drivetrain, autonomous, endgame, reliability, and notes
-- Animated scouting option controls with sliding selection states
-- Team directory with searchable team list and saved scout reports
-- Watchlist for priority teams and notes
-- Mock team-linking panel with a share code/QR-style visual
-- First-run onboarding that tells users how to add FirstPick to their home screen
-- Dark and light theme support from the requested color palette
-- Service worker for offline app-shell caching
-- Browser notification hooks for match alerts
+- Animated segmented controls with sliding selection states
+- Team directory with search, report counts, latest scout data, and team detail sheets
+- Watchlist for priority teams with notes and next-match context
+- Settings sheet for event name, dark/light theme, and clearing event data
+- First-run onboarding with home-screen install guidance
+- Service worker for offline app-shell caching and fallback navigation
+- Browser notification hooks for upcoming match alerts
+- Optional Firestore-backed session sync across linked devices
+- Vercel Analytics script included in the app shell
 
 ## Current Status
 
-This repo currently runs without a build step or external dependencies. Data is saved in `localStorage`, so it persists on the same device/browser but does not yet sync across phones.
+This repo runs without a build step. The default data store is `localStorage`, so FirstPick works offline and keeps data on the same browser/device.
 
-Planned backend work is documented in [backend.md](backend.md). The intended production architecture is:
+If Firebase is reachable, users can open the sharing panel, create a sync session, and share the generated code with other devices. Connected devices sync these fields through a Firestore document:
 
-- Vercel for hosting
-- Firebase for team linking and shared data sync
-- Shared collections for schedules, teams, watchlist entries, reminders, and scout reports
-- Push notification support for match reminders
+- event name
+- teams
+- schedule
+- scout reports
+- watchlist entries
+- reminders
+
+The Firebase implementation is intentionally simple right now: one document per session code in the `sessions` collection. Security rules, user auth, stronger conflict handling, QR scanning, and production push notification infrastructure are still future work.
 
 ## Project Structure
 
 ```text
 .
-├── app.js                 # App state, navigation, forms, local persistence, notification hooks
+├── app.js                 # App state, navigation, forms, local persistence, Firebase sync hooks
 ├── assets/
 │   └── icon.svg           # PWA/app icon
 ├── backend.md             # Backend sync requirements and notes
-├── index.html             # Main app shell
+├── firebase/
+│   ├── config.js          # Firebase project config and Firestore persistence setup
+│   └── db.js              # Session create/join/reconnect/save logic
+├── index.html             # Main app shell and external scripts
 ├── manifest.webmanifest   # PWA install metadata
 ├── overview.md            # Product/design requirements
-├── package.json           # Local server scripts
+├── package.json           # Local server scripts and package metadata
 ├── styles.css             # Mobile-first UI and theme styles
-└── sw.js                  # Service worker cache logic
+└── sw.js                  # Service worker cache and notification-click logic
 ```
 
 ## Run Locally
 
-From the repo root:
+Install dependencies if needed:
+
+```bash
+npm install
+```
+
+Start the local static server:
 
 ```bash
 npm run dev
@@ -60,11 +74,25 @@ Then open:
 http://localhost:4173
 ```
 
-The app can also be served directly with Python:
+The `dev` and `start` scripts both run:
 
 ```bash
 python3 -m http.server 4173
 ```
+
+## Firebase Sync
+
+Firebase is loaded through CDN scripts in `index.html`, then initialized from `firebase/config.js`. The included config points at the current FirstPick Firebase project.
+
+To use a different Firebase project:
+
+1. Create a Firebase project.
+2. Enable Firestore Database in Native mode.
+3. Register a Web app in Firebase.
+4. Replace the values in `firebase/config.js`.
+5. Deploy Firestore rules appropriate for your team or environment.
+
+For quick testing, `firebase/config.js` documents permissive session rules. Those rules are convenient for prototyping but should be replaced before production use.
 
 ## Using The App
 
@@ -72,13 +100,14 @@ python3 -m http.server 4173
 2. Use the bottom dock to move between Home, Schedule, Scout, Watchlist, and Teams.
 3. Add schedule data from the Schedule tab.
 4. Add team numbers and names from the Teams tab.
-5. Start scout reports from the center Scout dock button or the Home screen scout-next card.
-6. Use Settings to switch between dark and light mode.
-7. Use the sharing button in the top-left to view the current mock team-linking flow.
+5. Start scout reports from the center Scout dock button, a team sheet, a match sheet, or the Home screen scout-next card.
+6. Use Settings to rename the event, switch theme, or clear event data.
+7. Use the sharing button in the top-left to create, join, view, or disconnect a Firebase sync session.
+8. Enable match alerts from the Home screen if browser notifications are supported.
 
-## Data Model
+## Local Data
 
-The frontend currently stores this shape of data in `localStorage` under `ftc-companion-v3`:
+The frontend stores app state in `localStorage` under `ftc-companion-v3`:
 
 - `eventName`
 - `theme`
@@ -89,17 +118,17 @@ The frontend currently stores this shape of data in `localStorage` under `ftc-co
 - `watchlist`
 - `reminders`
 
-This is intentionally close to the future Firebase sync model, so the local store can later be replaced with real-time backend reads/writes.
+The active Firebase session code is stored separately under `ftc-session-code`, allowing the app to reconnect to the last session on reload.
 
 ## Backend TODO
 
-- Add Firebase project configuration
-- Create team/session linking with unique share codes
-- Replace local schedule/team/report/watchlist/reminder writes with synced Firebase writes
-- Add permissions or team-scoped access rules
-- Add real push notification scheduling for upcoming matches
-- Add conflict handling for multiple people editing the schedule
-- Consider QR scanning/generation for easier app linking
+- Replace prototype Firestore rules with production-ready access control
+- Add user or team-scoped permissions for sync sessions
+- Improve conflict handling for simultaneous edits
+- Add QR generation/scanning for easier session linking
+- Add real push notification scheduling beyond in-browser match alerts
+- Add watchlist-specific notifications when priority teams are playing
+- Consider importing schedules from official FTC data sources in a future version
 
 ## Design Notes
 
@@ -117,6 +146,8 @@ Useful checks:
 
 ```bash
 node --check app.js
+node --check firebase/config.js
+node --check firebase/db.js
 python3 -m json.tool manifest.webmanifest
 curl -I http://localhost:4173/
 ```
