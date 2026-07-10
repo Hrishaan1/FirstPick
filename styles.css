@@ -427,7 +427,8 @@ legend,
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 0.8rem;
@@ -435,6 +436,10 @@ textarea {
   color: var(--text);
   padding: 0.85rem 0.95rem;
   outline: none;
+}
+
+select {
+  appearance: auto;
 }
 
 textarea {
@@ -457,7 +462,7 @@ fieldset {
 .segmented {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(var(--field-count, 3), 1fr);
   gap: 0.35rem;
   padding: 0.3rem;
   margin-top: 0.5rem;
@@ -469,14 +474,15 @@ fieldset {
   --selected-index: 0;
 }
 
-.segmented[data-segment]::before {
+.segmented[data-segment]::before,
+.segmented[data-field-id]::before {
   content: "";
   position: absolute;
   z-index: 0;
   top: 0.3rem;
   bottom: 0.3rem;
   left: 0.3rem;
-  width: calc((100% - 0.6rem - 0.7rem) / 3);
+  width: calc((100% - 0.6rem - 0.7rem) / var(--field-count, 3));
   border-radius: 0.65rem;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--primary-hover) 88%, #fff), var(--primary));
@@ -504,7 +510,7 @@ fieldset {
   transform: translateY(-0.03rem);
 }
 
-.segmented:not([data-segment]) button.active {
+.segmented:not([data-segment], [data-field-id]) button.active {
   background: var(--primary);
 }
 

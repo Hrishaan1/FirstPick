@@ -128,43 +128,7 @@
           <form id="scoutForm" class="form-panel">
             <label class="field-label" for="teamNumberInput">Team number</label>
             <input id="teamNumberInput" name="teamNumber" inputmode="numeric" autocomplete="off" placeholder="11234" required>
-
-            <fieldset>
-              <legend>Drivetrain</legend>
-              <div class="segmented" data-segment="drivetrain">
-                <button type="button" data-value="tank">Tank</button>
-                <button type="button" data-value="mecanum">Mecanum</button>
-                <button type="button" data-value="omni">Omni</button>
-              </div>
-            </fieldset>
-
-            <fieldset>
-              <legend>Autonomous</legend>
-              <div class="segmented" data-segment="auto">
-                <button type="button" data-value="reliable">Reliable</button>
-                <button type="button" data-value="inconsistent">Inconsistent</button>
-                <button type="button" data-value="none">None</button>
-              </div>
-            </fieldset>
-
-            <fieldset>
-              <legend>Endgame</legend>
-              <div class="segmented" data-segment="endgame">
-                <button type="button" data-value="full">Full</button>
-                <button type="button" data-value="partial">Partial</button>
-                <button type="button" data-value="none">None</button>
-              </div>
-            </fieldset>
-
-            <label class="range-row" for="reliabilityInput">
-              <span>Reliability</span>
-              <strong id="reliabilityValue">7/10</strong>
-            </label>
-            <input id="reliabilityInput" name="reliability" type="range" min="1" max="10" value="7">
-
-            <label class="field-label" for="notesInput">Notes</label>
-            <textarea id="notesInput" name="notes" rows="5" placeholder="Fast cycle, careful driver, intake needs watching..."></textarea>
-
+            <div id="dynamicFormFields"></div>
             <button class="submit-button" type="submit">
               <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M7 21v-8h10v8M7 3v5h8"/></svg>
               Save report

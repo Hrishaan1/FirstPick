@@ -2,10 +2,19 @@ const STORE_KEY = "ftc-companion-v3";
 const ONBOARDING_KEY = "firstpick-onboarding-complete";
 const navOrder = ["home", "schedule", "scout", "watchlist", "teams"];
 
+const defaultFormFields = [
+  { id: "drivetrain", label: "Drivetrain", type: "select", options: ["Tank", "Mecanum", "Omni"], default: "Mecanum" },
+  { id: "auto", label: "Autonomous", type: "select", options: ["Reliable", "Inconsistent", "None"], default: "Reliable" },
+  { id: "endgame", label: "Endgame", type: "select", options: ["Full", "Partial", "None"], default: "Partial" },
+  { id: "reliability", label: "Reliability", type: "slider", min: 1, max: 10, default: 7 },
+  { id: "notes", label: "Notes", type: "text", default: "" }
+];
+
 const seedData = {
   eventName: "Competition Scout",
   theme: "dark",
   syncCode: "FTC-28874-7KQ",
+  formFields: defaultFormFields,
   teams: [
     { number: "11234", name: "Circuit Breakers" },
     { number: "8642", name: "Gear Shift" },
@@ -23,11 +32,7 @@ const seedData = {
     {
       id: uid(),
       teamNumber: "11234",
-      drivetrain: "mecanum",
-      auto: "reliable",
-      endgame: "partial",
-      reliability: 8,
-      notes: "Clean driving and fast reset after defense.",
+      fields: { drivetrain: "Mecanum", auto: "Reliable", endgame: "Partial", reliability: 8, notes: "Clean driving and fast reset after defense." },
       createdAt: new Date().toISOString()
     }
   ],
@@ -41,11 +46,7 @@ const seedData = {
 };
 
 let state = loadState();
-let selectedSegments = {
-  drivetrain: "mecanum",
-  auto: "reliable",
-  endgame: "partial"
-};
+let formValues = {};
 let toastTimer;
 let isRemoteUpdate = false;
 let syncConnected = false;
@@ -64,6 +65,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindNavigation();
   bindForms();
   bindActions();
+  initFormValues();
   renderAll();
   updateCountdown();
   setInterval(updateCountdown, 1000);
@@ -82,6 +84,15 @@ function loadState() {
     const stored = JSON.parse(localStorage.getItem(STORE_KEY));
     const nextState = stored ? { ...seedData, ...stored } : seedData;
     if (nextState.eventName === "FTC Meet Scout") nextState.eventName = "Competition Scout";
+    if (!nextState.formFields) nextState.formFields = defaultFormFields;
+    nextState.reports.forEach((report) => {
+      if (!report.fields) {
+        report.fields = {};
+        defaultFormFields.forEach((f) => {
+          report.fields[f.id] = report[f.id] ?? f.default ?? "";
+        });
+      }
+    });
     return nextState;
   } catch {
     return seedData;
@@ -93,6 +104,7 @@ function saveState() {
   if (syncConnected && !isRemoteUpdate) {
     fbSync.save({
       eventName: state.eventName,
+      formFields: state.formFields,
       teams: state.teams,
       schedule: state.schedule,
       reports: state.reports,
@@ -101,6 +113,13 @@ function saveState() {
     });
   }
   updateSyncIndicator();
+}
+
+function initFormValues() {
+  formValues = {};
+  state.formFields.forEach((field) => {
+    formValues[field.id] = field.default ?? "";
+  });
 }
 
 function registerServiceWorker() {
@@ -123,46 +142,30 @@ function showView(viewName) {
 }
 
 function bindForms() {
-  $$(".segmented").forEach((group) => {
-    const name = group.dataset.segment;
-    group.addEventListener("click", (event) => {
-      const button = event.target.closest("button");
-      if (!button) return;
-      selectedSegments[name] = button.dataset.value;
-      renderSegments();
-    });
-  });
-
-  $("#reliabilityInput").addEventListener("input", (event) => {
-    $("#reliabilityValue").textContent = `${event.target.value}/10`;
-  });
-
   $("#scoutForm").addEventListener("submit", (event) => {
     event.preventDefault();
     const teamNumber = $("#teamNumberInput").value.trim();
-    const notes = $("#notesInput").value.trim();
     if (!teamNumber) return;
 
     if (!state.teams.some((team) => team.number === teamNumber)) {
       state.teams.push({ number: teamNumber, name: "Unnamed team" });
     }
 
+    const fields = {};
+    state.formFields.forEach((field) => {
+      const value = formValues[field.id];
+      fields[field.id] = field.type === "slider" ? Number(value) : value;
+    });
+
     state.reports.unshift({
       id: uid(),
       teamNumber,
-      drivetrain: selectedSegments.drivetrain,
-      auto: selectedSegments.auto,
-      endgame: selectedSegments.endgame,
-      reliability: Number($("#reliabilityInput").value),
-      notes,
+      fields,
       createdAt: new Date().toISOString()
     });
 
     saveState();
-    event.target.reset();
-    $("#reliabilityInput").value = 7;
-    $("#reliabilityValue").textContent = "7/10";
-    selectedSegments = { drivetrain: "mecanum", auto: "reliable", endgame: "partial" };
+    initFormValues();
     renderAll();
     showToast(`Saved scout report for Team ${teamNumber}`);
     showView("teams");
@@ -189,6 +192,7 @@ function bindActions() {
 }
 
 function renderAll() {
+  renderScoutForm();
   renderSegments();
   renderHome();
   renderSchedule();
@@ -198,16 +202,87 @@ function renderAll() {
   updateNotificationState();
 }
 
+function renderScoutForm() {
+  const container = $("#dynamicFormFields");
+  if (!container) return;
+  container.innerHTML = state.formFields.map((field) => {
+    const val = formValues[field.id] ?? field.default ?? "";
+    if (field.type === "select") {
+      return `
+        <fieldset>
+          <legend>${escapeHtml(field.label)}</legend>
+          <div class="segmented" data-field-id="${field.id}" style="--field-count: ${(field.options || []).length}">
+            ${(field.options || []).map((opt) => `
+              <button type="button" data-value="${escapeHtml(opt)}" class="${val === opt ? "active" : ""}">${escapeHtml(opt)}</button>
+            `).join("")}
+          </div>
+        </fieldset>
+      `;
+    }
+    if (field.type === "slider") {
+      const min = field.min ?? 1;
+      const max = field.max ?? 10;
+      return `
+        <label class="range-row" for="field-${field.id}">
+          <span>${escapeHtml(field.label)}</span>
+          <strong id="val-${field.id}">${val}/${max}</strong>
+        </label>
+        <input id="field-${field.id}" type="range" min="${min}" max="${max}" value="${val}">
+      `;
+    }
+    if (field.type === "text") {
+      return `
+        <label class="field-label" for="field-${field.id}">${escapeHtml(field.label)}</label>
+        <textarea id="field-${field.id}" rows="5" placeholder="${escapeHtml(field.label)}">${escapeHtml(val)}</textarea>
+      `;
+    }
+    return "";
+  }).join("");
+
+  state.formFields.forEach((field) => {
+    if (field.type === "select") {
+      const group = $(`[data-field-id="${field.id}"]`);
+      if (group) {
+        group.addEventListener("click", (event) => {
+          const button = event.target.closest("button");
+          if (!button) return;
+          formValues[field.id] = button.dataset.value;
+          renderSegments();
+        });
+      }
+    }
+    if (field.type === "slider") {
+      const input = $(`#field-${field.id}`);
+      const display = $(`#val-${field.id}`);
+      if (input && display) {
+        input.addEventListener("input", () => {
+          formValues[field.id] = Number(input.value);
+          display.textContent = `${input.value}/${field.max ?? 10}`;
+        });
+      }
+    }
+    if (field.type === "text") {
+      const input = $(`#field-${field.id}`);
+      if (input) {
+        input.addEventListener("input", () => {
+          formValues[field.id] = input.value;
+        });
+      }
+    }
+  });
+}
+
 function renderSegments() {
-  $$(".segmented").forEach((group) => {
-    const name = group.dataset.segment;
-    if (!name) return;
+  $$(".segmented[data-field-id]").forEach((group) => {
+    const id = group.dataset.fieldId;
     const buttons = $$("button", group);
-    const activeIndex = Math.max(0, buttons.findIndex((button) => button.dataset.value === selectedSegments[name]));
+    const count = buttons.length;
+    group.style.setProperty("--field-count", count);
+    const activeIndex = Math.max(0, buttons.findIndex((button) => button.dataset.value === formValues[id]));
     group.style.setProperty("--selected-index", activeIndex);
     $$("button", group).forEach((button) => {
-      button.classList.toggle("active", button.dataset.value === selectedSegments[name]);
-      button.setAttribute("aria-pressed", button.dataset.value === selectedSegments[name]);
+      button.classList.toggle("active", button.dataset.value === formValues[id]);
+      button.setAttribute("aria-pressed", button.dataset.value === formValues[id]);
     });
   });
 }
@@ -313,7 +388,20 @@ function renderTeams() {
 
 function teamCard(team) {
   const reports = reportsFor(team.number);
-  const average = reports.length ? Math.round(reports.reduce((sum, report) => sum + report.reliability, 0) / reports.length) : null;
+  const sliderFields = state.formFields.filter((f) => f.type === "slider");
+  const average = reports.length && sliderFields.length
+    ? Math.round(reports.reduce((sum, r) => {
+        const vals = sliderFields.map((f) => Number(r.fields?.[f.id]) || 0);
+        return sum + vals.reduce((a, b) => a + b, 0) / vals.length;
+      }, 0) / reports.length)
+    : null;
+  const first = reports[0];
+  const chips = first && first.fields
+    ? state.formFields.filter((f) => f.type !== "text").slice(0, 3).map((f) => {
+        const v = first.fields[f.id];
+        return v ? `<span class="chip">${escapeHtml(v)}</span>` : "";
+      }).join("")
+    : "";
   return `
     <button class="team-card" type="button" data-team-card="${team.number}">
       <div class="team-top">
@@ -324,7 +412,7 @@ function teamCard(team) {
         ${average ? `<span class="time-badge">${average}/10</span>` : "<span class=\"time-badge\">New</span>"}
       </div>
       <div class="chip-row">
-        ${reports[0] ? `<span class="chip good">${reports[0].auto} auto</span><span class="chip">${reports[0].drivetrain}</span><span class="chip warn">${reports[0].endgame} endgame</span>` : "<span class=\"chip\">No scout data</span>"}
+        ${chips || "<span class=\"chip\">No scout data</span>"}
       </div>
     </button>
   `;
@@ -441,6 +529,26 @@ function openMatchSheet(match) {
   });
 }
 
+function renderReportChips(report) {
+  const chips = [];
+  state.formFields.forEach((f) => {
+    const v = report.fields?.[f.id];
+    if (v == null || v === "") return;
+    if (f.type === "text") return;
+    chips.push(`<span class="chip">${escapeHtml(f.label)}: ${escapeHtml(String(v))}</span>`);
+  });
+  return chips.join("");
+}
+
+function renderReportNotes(report) {
+  const textFields = state.formFields.filter((f) => f.type === "text");
+  const parts = textFields.map((f) => {
+    const v = report.fields?.[f.id];
+    return v ? `<p><strong>${escapeHtml(f.label)}:</strong> ${escapeHtml(v)}</p>` : "";
+  }).filter(Boolean);
+  return parts.join("") || "<p>No notes</p>";
+}
+
 function openTeamSheet(teamNumber) {
   const team = state.teams.find((item) => item.number === teamNumber) || { number: teamNumber, name: "Unnamed team" };
   const reports = reportsFor(teamNumber);
@@ -450,13 +558,8 @@ function openTeamSheet(teamNumber) {
     <div class="sheet-grid">
       ${reports.map((report) => `
         <article class="editor-card">
-          <div class="chip-row">
-            <span class="chip">${report.drivetrain}</span>
-            <span class="chip good">${report.auto} auto</span>
-            <span class="chip warn">${report.endgame} endgame</span>
-            <span class="chip">${report.reliability}/10 reliable</span>
-          </div>
-          <p>${report.notes || "No notes"}</p>
+          <div class="chip-row">${renderReportChips(report)}</div>
+          ${renderReportNotes(report)}
         </article>
       `).join("") || emptyState("No scout reports yet")}
     </div>
@@ -488,6 +591,7 @@ function openSettings() {
       </fieldset>
     </div>
     <button class="danger-button" type="button" id="clearAllData" style="width:100%;margin-top:0.25rem;">Clear all data</button>
+    <button class="secondary-button" type="button" id="customizeFormButton" style="width:100%;margin-top:0.35rem;">Customize form</button>
     <div class="sheet-actions">
       <button class="secondary-button" type="button" data-close>Cancel</button>
       <button class="submit-button" type="button" id="saveSettings">Save</button>
@@ -510,6 +614,10 @@ function openSettings() {
   $("#clearAllData").addEventListener("click", () => {
     closeSheet();
     openClearDataConfirm();
+  });
+  $("#customizeFormButton").addEventListener("click", () => {
+    closeSheet();
+    openFormEditor();
   });
 }
 
@@ -788,6 +896,81 @@ function openReminderEditor() {
   });
 }
 
+function openFormEditor() {
+  openSheet(`
+    <h2>Customize form</h2>
+    <p class="field-label">Add, remove, or reorder scout form fields.</p>
+    <div class="sheet-grid" id="formEditor"></div>
+    <button class="secondary-button" type="button" id="addFormFieldButton">Add field</button>
+    <div class="sheet-actions">
+      <button class="secondary-button" type="button" data-close>Cancel</button>
+      <button class="submit-button" type="button" id="saveFormFields">Save</button>
+    </div>
+  `);
+  renderFormEditor();
+  $("#addFormFieldButton").addEventListener("click", () => {
+    state.formFields.push({ id: "field-" + Date.now(), label: "", type: "select", options: ["Option A", "Option B", "Option C"], default: "Option A" });
+    renderFormEditor();
+  });
+  $("#saveFormFields").addEventListener("click", () => {
+    const cards = $$(".editor-card", $("#formEditor"));
+    state.formFields = cards.map((card) => {
+      const id = card.dataset.fieldId;
+      const label = $("[data-ff='label']", card).value.trim();
+      const type = $("[data-ff='type']", card).value;
+      const options = type === "select" ? $("[data-ff='options']", card).value.split(",").map((s) => s.trim()).filter(Boolean) : [];
+      const def = type === "select" ? (options[0] || "") : type === "slider" ? 7 : "";
+      return { id, label: label || "Untitled", type, options, default: def, min: 1, max: 10 };
+    });
+    initFormValues();
+    saveState();
+    renderAll();
+    closeSheet();
+    showToast("Form updated");
+  });
+}
+
+function renderFormEditor() {
+  $("#formEditor").innerHTML = state.formFields.map((field) => `
+    <div class="editor-card" data-field-id="${field.id}">
+      <div class="editor-grid">
+        <label class="editor-field">
+          <span>Label</span>
+          <input data-ff="label" value="${escapeHtml(field.label)}" placeholder="Field label">
+        </label>
+        <label class="editor-field">
+          <span>Type</span>
+          <select data-ff="type" class="field-type-select">
+            <option value="select" ${field.type === "select" ? "selected" : ""}>Multiple choice</option>
+            <option value="slider" ${field.type === "slider" ? "selected" : ""}>Slider</option>
+            <option value="text" ${field.type === "text" ? "selected" : ""}>Text box</option>
+          </select>
+        </label>
+        <label class="editor-field field-options" style="${field.type !== "select" ? "display:none" : ""}">
+          <span>Options (comma-separated)</span>
+          <input data-ff="options" value="${escapeHtml((field.options || []).join(", "))}" placeholder="Tank, Mecanum, Omni">
+        </label>
+      </div>
+      <button class="danger-button" type="button" data-remove-field="${field.id}" style="width:100%;margin-top:0.5rem;">Delete field</button>
+    </div>
+  `).join("");
+
+  $$("[data-ff='type']").forEach((sel) => {
+    sel.addEventListener("change", () => {
+      const card = sel.closest(".editor-card");
+      const optsField = $(".field-options", card);
+      optsField.style.display = sel.value === "select" ? "" : "none";
+    });
+  });
+
+  $$("[data-remove-field]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.formFields = state.formFields.filter((f) => f.id !== btn.dataset.removeField);
+      renderFormEditor();
+    });
+  });
+}
+
 function updateSyncIndicator() {
   const btn = $("#syncButton");
   if (!btn) return;
@@ -800,6 +983,7 @@ async function tryFirebaseReconnect() {
     const data = await fbSync.tryReconnect();
     if (data) {
       Object.assign(state, data);
+      if (!state.formFields) state.formFields = defaultFormFields;
       syncConnected = true;
       fbSync.onRemoteChange = handleRemoteUpdate;
       saveState();
@@ -816,6 +1000,7 @@ async function createSyncSession() {
   try {
     const code = await fbSync.create({
       eventName: state.eventName,
+      formFields: state.formFields,
       teams: state.teams,
       schedule: state.schedule,
       reports: state.reports,
@@ -840,6 +1025,7 @@ async function joinSyncSession(code) {
       return;
     }
     Object.assign(state, data);
+    if (!state.formFields) state.formFields = defaultFormFields;
     syncConnected = true;
     fbSync.onRemoteChange = handleRemoteUpdate;
     saveState();
@@ -856,9 +1042,14 @@ function handleRemoteUpdate(data) {
   if (!data) return;
   isRemoteUpdate = true;
   const prevEventName = state.eventName;
+  const prevFormFields = state.formFields;
   Object.assign(state, data);
+  if (!state.formFields) state.formFields = defaultFormFields;
   if (state.eventName !== prevEventName) {
     $("#eventName").textContent = state.eventName;
+  }
+  if (state.formFields !== prevFormFields) {
+    initFormValues();
   }
   localStorage.setItem(STORE_KEY, JSON.stringify(state));
   renderAll();
