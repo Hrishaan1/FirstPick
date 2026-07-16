@@ -1,5 +1,6 @@
 const STORE_KEY = "ftc-companion-v3";
 const ONBOARDING_KEY = "firstpick-onboarding-complete";
+const MUTED_KEY = "ftc-companion-alerts-muted";
 const navOrder = ["home", "schedule", "scout", "watchlist", "teams"];
 
 const defaultFormFields = [
@@ -478,19 +479,54 @@ function requestNotifications() {
     showToast("Notifications are not available in this browser");
     return;
   }
+  if (Notification.permission === "granted") {
+    toggleAlertMute();
+    return;
+  }
+  if (Notification.permission === "denied") {
+    showToast("Notifications are blocked by your browser");
+    return;
+  }
   Notification.requestPermission().then((permission) => {
+    if (permission === "granted") {
+      localStorage.removeItem(MUTED_KEY);
+    }
     updateNotificationState();
     showToast(permission === "granted" ? "Match notifications enabled" : "Notifications were not enabled");
   });
 }
 
+function toggleAlertMute() {
+  const muted = localStorage.getItem(MUTED_KEY);
+  if (muted) {
+    localStorage.removeItem(MUTED_KEY);
+    showToast("Match notifications enabled");
+  } else {
+    localStorage.setItem(MUTED_KEY, "1");
+    showToast("Match notifications paused");
+  }
+  updateNotificationState();
+}
+
 function updateNotificationState() {
   const status = "Notification" in window ? Notification.permission : "unavailable";
-  $("#notificationState").textContent = status === "granted" ? "Enabled for this device" : "Enable notifications";
+  const muted = !!localStorage.getItem(MUTED_KEY);
+  const bellIcon = $("#bellIcon");
+  const stateEl = $("#notificationState");
+  if (status === "granted" && muted) {
+    stateEl.textContent = "Paused";
+    bellIcon.classList.add("muted");
+  } else if (status === "granted") {
+    stateEl.textContent = "Enabled for this device";
+    bellIcon.classList.remove("muted");
+  } else {
+    stateEl.textContent = "Enable notifications";
+    bellIcon.classList.remove("muted");
+  }
 }
 
 function checkMatchNotifications() {
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  if (!("Notification" in window) || Notification.permission !== "granted" || localStorage.getItem(MUTED_KEY)) return;
   const upcoming = getUpcomingMatch();
   if (!upcoming) return;
   const diff = timeToDate(upcoming.time) - new Date();

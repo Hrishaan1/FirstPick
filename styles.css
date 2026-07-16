@@ -271,12 +271,40 @@ svg {
 }
 
 .tile-icon {
+  position: relative;
   width: 2.5rem;
   height: 2.5rem;
   display: grid;
   place-items: center;
   border-radius: 0.85rem;
   background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.tile-icon svg:first-child {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.muted-slash {
+  display: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.muted-slash line {
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.tile-icon.muted .muted-slash {
+  display: block;
+}
+
+.tile-icon.muted svg:first-child {
+  opacity: 0.4;
 }
 
 .section-block {
