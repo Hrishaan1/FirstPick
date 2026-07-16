@@ -702,6 +702,12 @@ input[type="range"] {
   margin-top: 1rem;
 }
 
+.settings-divider {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 1rem 0 0.75rem;
+}
+
 .secondary-button,
 .danger-button {
   min-height: 3rem;

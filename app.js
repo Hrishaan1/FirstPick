@@ -590,8 +590,9 @@ function openSettings() {
         </div>
       </fieldset>
     </div>
-    <button class="danger-button" type="button" id="clearAllData" style="width:100%;margin-top:0.25rem;">Clear all data</button>
-    <button class="secondary-button" type="button" id="customizeFormButton" style="width:100%;margin-top:0.35rem;">Customize form</button>
+    <hr class="settings-divider">
+    <button class="danger-button" type="button" id="clearAllData" style="width:100%;">Clear all data</button>
+    <button class="secondary-button" type="button" id="customizeFormButton" style="width:100%;margin-top:0.5rem;">Customize form</button>
     <div class="sheet-actions">
       <button class="secondary-button" type="button" data-close>Cancel</button>
       <button class="submit-button" type="button" id="saveSettings">Save</button>
