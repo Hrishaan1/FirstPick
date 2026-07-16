@@ -142,6 +142,7 @@ The visual design follows the palette in `overview.md`:
 
 ## Verification
 
+
 Useful checks:
 
 ```bash
