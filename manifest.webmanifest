@@ -1,6 +1,7 @@
 {
   "name": "FirstPick",
   "short_name": "FirstPick",
+  "id": "https://firstpick-two.vercel.app",
   "description": "Mobile-first FTC scouting, schedule, watchlist, and team reminder PWA.",
   "start_url": ".",
   "scope": ".",
