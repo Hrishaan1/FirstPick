@@ -1,7 +1,13 @@
 const STORE_KEY = "ftc-companion-v3";
 const ONBOARDING_KEY = "firstpick-onboarding-complete";
 const MUTED_KEY = "ftc-companion-alerts-muted";
+const CHAT_NAME_KEY = "ftc-companion-chat-name";
+const CHAT_DEVICE_KEY = "ftc-companion-chat-device";
 const navOrder = ["home", "schedule", "scout", "watchlist", "teams"];
+const chatUnread = [];
+
+let chatOpen = false;
+let chatLastSeenTs = 0;
 
 const defaultFormFields = [
   { id: "drivetrain", label: "Drivetrain", type: "select", options: ["Tank", "Mecanum", "Omni"], default: "Mecanum" },
@@ -43,7 +49,8 @@ const seedData = {
   reminders: [
     { id: uid(), text: "Replace drive battery before Match 12", done: false },
     { id: uid(), text: "Ask pit crew about auto preload issue", done: false }
-  ]
+  ],
+  messages: []
 };
 
 let state = loadState();
@@ -57,6 +64,23 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
 function uid() {
   return globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getDeviceId() {
+  let id = localStorage.getItem(CHAT_DEVICE_KEY);
+  if (!id) {
+    id = uid();
+    localStorage.setItem(CHAT_DEVICE_KEY, id);
+  }
+  return id;
+}
+
+function getChatName() {
+  return localStorage.getItem(CHAT_NAME_KEY) || "";
+}
+
+function setChatName(name) {
+  localStorage.setItem(CHAT_NAME_KEY, name);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -178,6 +202,7 @@ function bindForms() {
 function bindActions() {
   $("#settingsButton").addEventListener("click", openSettings);
   $("#syncButton").addEventListener("click", openSync);
+  $("#chatButton").addEventListener("click", openChat);
   $("#upcomingButton").addEventListener("click", () => openMatchSheet(getUpcomingMatch()));
   $("#scoutNextButton").addEventListener("click", () => {
     const target = getScoutNext();
@@ -726,6 +751,170 @@ function completeOnboarding() {
   showToast("FirstPick is ready");
 }
 
+function openChat() {
+  if (!syncConnected) {
+    showToast("Join a sync session to chat");
+    return;
+  }
+  if (!getChatName()) {
+    openChatNamePrompt();
+    return;
+  }
+  openChatRoom();
+}
+
+function openChatNamePrompt() {
+  openSheet(`
+    <h2>Session chat</h2>
+    <p class="field-label">What should other members of your session call you?</p>
+    <div class="sheet-grid">
+      <input id="chatNameInput" placeholder="Your name" maxlength="24" autocomplete="off">
+    </div>
+    <div class="sheet-actions">
+      <button class="secondary-button" type="button" data-close>Cancel</button>
+      <button class="submit-button" type="button" id="saveChatName">Start chatting</button>
+    </div>
+  `);
+  const input = $("#chatNameInput");
+  input.focus();
+  $("#saveChatName").addEventListener("click", () => {
+    const name = input.value.trim();
+    if (!name) {
+      showToast("Enter your name first");
+      return;
+    }
+    setChatName(name);
+    openChatRoom();
+  });
+}
+
+function openChatRoom() {
+  chatOpen = true;
+  chatUnread.length = 0;
+  chatLastSeenTs = Math.max(chatLastSeenTs, ...(state.messages || []).map((m) => m.ts || 0));
+  updateChatBadge();
+  openSheet(`
+    <h2>Session chat</h2>
+    <p class="field-label">Chatting as <strong class="self-label">${escapeHtml(getChatName())}</strong> in <strong>${escapeHtml(fbSync.getCode())}</strong></p>
+    <div class="chat-room">
+      <div class="chat-messages" id="chatMessages">${renderChatMessages()}</div>
+      <div class="chat-composer">
+        <textarea id="chatInput" rows="1" placeholder="Message the session..." autocomplete="off"></textarea>
+        <button class="chat-send" type="button" id="sendChat" aria-label="Send message">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m22 2-11 11"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg>
+        </button>
+      </div>
+    </div>
+  `);
+  const textarea = $("#chatInput");
+  const scrollToBottom = () => {
+    const box = $("#chatMessages");
+    if (box) box.scrollTop = box.scrollHeight;
+  };
+  scrollToBottom();
+  const send = () => {
+    const text = textarea.value.trim();
+    if (!text) return;
+    const message = {
+      id: uid(),
+      senderId: getDeviceId(),
+      senderName: getChatName(),
+      text,
+      ts: Date.now()
+    };
+    state.messages.push(message);
+    state.messages.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    const box = $("#chatMessages");
+    if (box) box.innerHTML = renderChatMessages();
+    scrollToBottom();
+    textarea.value = "";
+    textarea.focus();
+    fbSync.sendMessage(message)
+      .then(() => {
+        if (!chatOpen) updateChatBadge();
+      })
+      .catch(() => showToast("Failed to send message"));
+  };
+  $("#sendChat").addEventListener("click", send);
+  textarea.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      send();
+    }
+  });
+  textarea.focus();
+}
+
+function renderChatMessages() {
+  const messages = [...(state.messages || [])].sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  if (!messages.length) {
+    return `<div class="empty-state">No messages yet. Say hi to your session!</div>`;
+  }
+  const deviceId = getDeviceId();
+  return messages.map((m) => {
+    const own = m.senderId === deviceId;
+    const time = new Date(m.ts || Date.now()).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const sender = own ? "You" : (m.senderName || "Someone in the session");
+    return `
+      <div class="msg ${own ? "own" : "other"}">
+        <span class="msg-sender">${escapeHtml(sender)}</span>
+        <div class="msg-bubble">${escapeHtml(m.text)}</div>
+        <span class="msg-time">${time}</span>
+      </div>
+    `;
+  }).join("");
+}
+
+function handleIncomingMessages(newMessages) {
+  const deviceId = getDeviceId();
+  const fresh = newMessages.filter((m) => (m.ts || 0) > chatLastSeenTs);
+  if (!fresh.length) return;
+  chatLastSeenTs = Math.max(chatLastSeenTs, ...fresh.map((m) => m.ts || 0));
+  fresh.forEach((m) => {
+    if (m.senderId === deviceId) return;
+    if (chatOpen) {
+      const box = $("#chatMessages");
+      if (box) {
+        box.innerHTML = renderChatMessages();
+        box.scrollTop = box.scrollHeight;
+      }
+      return;
+    }
+    chatUnread.push(m.id);
+    notifyChatMessage(m);
+  });
+  updateChatBadge();
+}
+
+function updateChatBadge() {
+  const badge = $("#chatBadge");
+  const button = $("#chatButton");
+  if (!badge || !button) return;
+  if (!syncConnected) return;
+  if (chatOpen || chatUnread.length === 0) {
+    badge.hidden = true;
+  } else {
+    badge.hidden = false;
+    badge.textContent = chatUnread.length > 9 ? "9+" : String(chatUnread.length);
+  }
+}
+
+function notifyChatMessage(message) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  if (localStorage.getItem(MUTED_KEY)) return;
+  if (!("serviceWorker" in navigator)) return;
+  chatUnread.push(message.id);
+  navigator.serviceWorker.ready.then((registration) => {
+    registration.showNotification(`${message.senderName || "Someone in the session"} says:`, {
+      body: message.text,
+      icon: "assets/icon.svg",
+      badge: "assets/icon.svg",
+      tag: "ftc-chat"
+    });
+  });
+}
+
+
 function openSync() {
   if (syncConnected) {
     openSheet(`
@@ -1010,9 +1199,15 @@ function renderFormEditor() {
 
 function updateSyncIndicator() {
   const btn = $("#syncButton");
-  if (!btn) return;
-  btn.style.color = syncConnected ? "var(--success)" : "";
-  btn.title = syncConnected ? `Synced: ${fbSync.getCode()}` : "Sync (not connected)";
+  const chatBtn = $("#chatButton");
+  if (btn) {
+    btn.style.color = syncConnected ? "var(--success)" : "";
+    btn.title = syncConnected ? `Synced: ${fbSync.getCode()}` : "Sync (not connected)";
+  }
+  if (chatBtn) {
+    chatBtn.hidden = !syncConnected;
+  }
+  updateChatBadge();
 }
 
 async function tryFirebaseReconnect() {
@@ -1021,6 +1216,9 @@ async function tryFirebaseReconnect() {
     if (data) {
       Object.assign(state, data);
       if (!state.formFields) state.formFields = defaultFormFields;
+      if (!state.messages) state.messages = [];
+      state.messages.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      chatLastSeenTs = Math.max(chatLastSeenTs, ...(state.messages || []).map((m) => m.ts || 0));
       syncConnected = true;
       fbSync.onRemoteChange = handleRemoteUpdate;
       saveState();
@@ -1063,6 +1261,9 @@ async function joinSyncSession(code) {
     }
     Object.assign(state, data);
     if (!state.formFields) state.formFields = defaultFormFields;
+    if (!state.messages) state.messages = [];
+    state.messages.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    chatLastSeenTs = Math.max(chatLastSeenTs, ...(state.messages || []).map((m) => m.ts || 0));
     syncConnected = true;
     fbSync.onRemoteChange = handleRemoteUpdate;
     saveState();
@@ -1080,13 +1281,20 @@ function handleRemoteUpdate(data) {
   isRemoteUpdate = true;
   const prevEventName = state.eventName;
   const prevFormFields = state.formFields;
+  const prevMessageIds = new Set((state.messages || []).map((m) => m.id));
   Object.assign(state, data);
   if (!state.formFields) state.formFields = defaultFormFields;
+  if (!state.messages) state.messages = [];
   if (state.eventName !== prevEventName) {
     $("#eventName").textContent = state.eventName;
   }
   if (state.formFields !== prevFormFields) {
     initFormValues();
+  }
+  state.messages.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  if (state.messages.some((m) => !prevMessageIds.has(m.id))) {
+    handleIncomingMessages(state.messages.filter((m) => !prevMessageIds.has(m.id)));
+    if (!chatOpen) updateChatBadge();
   }
   localStorage.setItem(STORE_KEY, JSON.stringify(state));
   renderAll();
@@ -1102,6 +1310,8 @@ function openSheet(html) {
 }
 
 function closeSheet() {
+  chatOpen = false;
+  updateChatBadge();
   $("#detailSheet").hidden = true;
   $("#sheetBackdrop").hidden = true;
 }

@@ -52,6 +52,14 @@ const fbSync = {
     }, { merge: true });
   },
 
+  async sendMessage(message) {
+    if (!this.sessionCode) return;
+    await FIRESTORE.collection("sessions").doc(this.sessionCode).set({
+      messages: firebase.firestore.FieldValue.arrayUnion(message),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  },
+
   disconnect() {
     if (this.unsub) this.unsub();
     this.unsub = null;
